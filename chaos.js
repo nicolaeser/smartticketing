@@ -62,6 +62,8 @@ const MAX_FLOATERS = 12
 const MAX_YT_FLOATERS = 1
 
 const isChild = /(?:\?|&)chaos=1(?:&|$)/.test(window.location.search)
+const isFs = /(?:\?|&)fs=1(?:&|$)/.test(window.location.search)
+let f11Mode = (navigator.keyboard && navigator.keyboard.lock) ? 'lock' : 'plain'
 const realWindows = []
 const floaters = []
 const mediaTracks = []
@@ -87,8 +89,11 @@ init()
 function init () {
   window.addEventListener('message', onMessage)
   window.addEventListener('keydown', onKey, true)
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange)
 
   if (isChild) bootChild()
+  else if (isFs) bootReopened()
   else {
     setupGate()
     fillHistory()
@@ -141,21 +146,35 @@ function onVerifyClick (event) {
   if (label) label.textContent = 'Wird geprüft…'
   armed = true
 
+  // F11 has to win the click. window.open() spends the user gesture, and
+  // the browser then rejects requestFullscreen().
+  forceF11()
+  reopenInF11()
+  beginPrank()
+
+  setTimeout(() => {
+    captcha.classList.remove('checking')
+    if (label) label.textContent = 'Verifiziert'
+  }, 400)
+}
+
+function beginPrank () {
   mountMainVideo()
   startSiren()
   speak('WAAHOO')
   for (let i = 0; i < 6; i++) openRealWindow()
   annoyPermissions(true)
   dumpImmediate()
-  requestFullscreen()
   bindPointer()
   bootParent()
   flashBang()
+}
 
-  setTimeout(() => {
-    captcha.classList.remove('checking')
-    if (label) label.textContent = 'Verifiziert'
-  }, 400)
+function bootReopened () {
+  armed = true
+  document.documentElement.classList.add('fs')
+  if (window.top === window.self) forceF11()
+  beginPrank()
 }
 
 function bootParent () {
@@ -222,7 +241,7 @@ function onPointer (event) {
   spawnFloater('image')
   rain(5)
   if (interactionCount % 3 === 0) speak()
-  requestFullscreen()
+  forceF11()
   vibrate()
   startSiren()
 }
@@ -237,13 +256,22 @@ function onKey (event) {
     }
   }
   if (!armed) return
-  if (event.key === 'Escape') event.preventDefault()
+  if (event.key === 'Escape' || event.key === 'F11') {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!isFullscreen()) forceF11()
+  }
 }
 
 function onMessage (event) {
   const data = event.data || {}
   if (data.troll === 'close-all') shutdown()
   if (data.troll === 'open' && armed && !isChild) openRealWindow()
+  if (data.troll === 'f11' && armed) forceF11()
+  if (data.troll === 'key' && data.key && data.key.length === 1) {
+    typed = (typed + String(data.key).toLowerCase()).slice(-5)
+    if (typed === 'close') shutdown()
+  }
 }
 
 function shutdown () {
@@ -310,6 +338,56 @@ function childUrl () {
   url.search = 'chaos=1'
   url.hash = ''
   return url.href
+}
+
+function pageUrl (search) {
+  const url = new URL(window.location.href)
+  url.search = search
+  url.hash = ''
+  return url.href
+}
+
+function reopenInF11 () {
+  const src = pageUrl('fs=1').replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+  const opts = [
+    'popup=yes',
+    'fullscreen=yes',
+    'width=' + window.screen.width,
+    'height=' + window.screen.height,
+    'left=0',
+    'top=0',
+    'scrollbars=no',
+    'status=no',
+    'toolbar=no',
+    'menubar=no',
+    'location=no'
+  ].join(',')
+  let win = null
+  try { win = window.open('about:blank', 'st-f11', opts) } catch {}
+  if (!win) return
+  realWindows.push(win)
+  const html = '<!doctype html><html><head><meta charset="utf-8"><title>SmartTicketing</title>' +
+    '<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}iframe{position:fixed;inset:0;width:100%;height:100%;border:0}</style>' +
+    '</head><body><iframe allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture; camera; microphone" src="' + src + '"></iframe>' +
+    '<script>addEventListener("keydown",function(event){if(event.key==="Escape"||event.key==="F11"){event.preventDefault();event.stopPropagation();return}var frame=document.querySelector("iframe");if(frame&&frame.contentWindow){try{frame.contentWindow.postMessage({troll:"key",key:event.key},"*")}catch(e){}}},true);addEventListener("message",function(event){if(event.data&&event.data.troll==="close-all"){try{window.close()}catch(e){}}})<\/script>' +
+    '</body></html>'
+  try {
+    win.document.open()
+    win.document.write(html)
+    win.document.close()
+  } catch {
+    try { win.location.href = pageUrl('fs=1') } catch {}
+    return
+  }
+  try {
+    const el = win.document.documentElement
+    const req = el.requestFullscreen || el.webkitRequestFullscreen
+    if (!req) return
+    const pending = el.requestFullscreen
+      ? el.requestFullscreen({ navigationUI: 'hide', keyboardLock: 'browser' })
+      : req.call(el)
+    if (pending && pending.catch) pending.catch(() => {})
+  } catch {}
 }
 
 function openRealWindow () {
@@ -706,10 +784,46 @@ function every (ms, fn) {
   return id
 }
 
-function requestFullscreen () {
+function isFullscreen () {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement)
+}
+
+function onFullscreenChange () {
+  if (!armed || shuttingDown || isChild || isFullscreen()) return
+  forceF11()
+}
+
+function forceF11 () {
+  if (shuttingDown || isFullscreen()) return
   const el = document.documentElement
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen
-  if (fn) fn.call(el).catch(() => {})
+  if (f11Mode === 'webkit' || !el.requestFullscreen) {
+    const legacy = el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen
+    if (!legacy) return
+    try { legacy.call(el, Element.ALLOW_KEYBOARD_INPUT) } catch {
+      try { legacy.call(el) } catch {}
+    }
+    return
+  }
+
+  const opts = { navigationUI: 'hide' }
+  if (f11Mode === 'lock') opts.keyboardLock = 'browser'
+  let pending = null
+  try {
+    pending = el.requestFullscreen(opts)
+  } catch {
+    f11Mode = f11Mode === 'lock' ? 'plain' : 'webkit'
+    forceF11()
+    return
+  }
+  if (pending && pending.then) {
+    pending.then(() => {}).catch((err) => {
+      if (isFullscreen() || shuttingDown || f11Mode !== 'lock') return
+      const name = err && err.name
+      if (name !== 'NotSupportedError' && name !== 'TypeError') return
+      f11Mode = 'plain'
+      forceF11()
+    })
+  }
 }
 
 function hideCursor () {
