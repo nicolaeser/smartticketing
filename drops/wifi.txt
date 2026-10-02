@@ -1,0 +1,5 @@
+SSID            PASS
+NETGEAR-5G      password
+FRITZ-Box       12345678
+Cafe_Free       [open]
+FBI_Van         WAAHOO

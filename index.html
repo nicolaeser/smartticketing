@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sicherheitsprüfung · SmartTicketing</title>
+  <meta name="description" content="Bitte bestätige, dass du kein Roboter bist.">
+  <meta name="theme-color" content="#f4f5f7">
+  <meta name="robots" content="noindex,nofollow">
+  <script>
+    if (/(?:\?|&)chaos=1(?:&|$)/.test(location.search)) document.documentElement.classList.add('child')
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          },
+          colors: {
+            brand: { 50: '#eef6ff', 600: '#2563eb', 700: '#1d4ed8', 900: '#0f172a' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Crect x='7' y='12' width='18' height='8' rx='2' fill='%23fff'/%3E%3C/svg%3E">
+  <style>
+    html.child #gate { display: none !important; }
+    html.child, html.child body { background: #000; overflow: hidden; }
+    body.live { overflow: hidden; }
+    body.live #gate { display: none !important; }
+    body.nocursor, body.nocursor * { cursor: none !important; }
+    body.done #gate, body.done #chaos, body.done #scan, body.done #fx,
+    body.done #windows, body.done #toasts, body.done #rain { display: none !important; }
+    body.done #done { display: grid; }
+    .checking .spinner { opacity: 1 !important; animation: spin .7s linear infinite; }
+    .checking .check { opacity: 0 !important; }
+    #captcha[aria-pressed="true"]:not(.checking) .box { background: #16a34a; border-color: #16a34a; }
+    #captcha[aria-pressed="true"]:not(.checking) .check { opacity: 1; transform: scale(1); }
+    #chaos, #scan, #fx, #windows, #toasts, #rain, #done { position: fixed; inset: 0; }
+    #chaos { z-index: 10; background: #000; opacity: 0; pointer-events: none; }
+    body.live #chaos { opacity: 1; animation: shake .1s infinite, hue .45s linear infinite; }
+    #chaos iframe, #chaos .child-hero, #chaos video.hero {
+      position: absolute; inset: -6%; width: 112%; height: 112%; border: 0; object-fit: cover;
+    }
+    #scan, #fx, #windows, #toasts, #rain { pointer-events: none; }
+    #scan { z-index: 22; }
+    body.live #scan {
+      opacity: .45;
+      background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,.28) 2px 3px);
+    }
+    #fx { z-index: 24; }
+    #fx.strobe { background: #fff; mix-blend-mode: difference; animation: blink .08s step-end infinite; opacity: .35; }
+    #fx.boom { background: #fff; opacity: .9; }
+    #windows { z-index: 30; overflow: hidden; }
+    #rain { z-index: 40; overflow: hidden; }
+    #toasts { z-index: 45; }
+    #done { z-index: 80; display: none; place-items: center; background: #050505; color: #f8fafc; text-align: center; }
+    .drop { position: absolute; top: -10vh; animation: fall linear forwards; }
+    .floater {
+      position: absolute; top: 0; left: 0; width: 260px; color: #fff; background: #09090b;
+      border: 2px solid #ff00aa; border-radius: 12px; overflow: hidden; pointer-events: auto;
+      user-select: none; will-change: transform; animation: neon .7s linear infinite;
+    }
+    .floater.slim { width: 230px; }
+    .floater.wide { width: 360px; }
+    .floater.pic { width: 210px; }
+    .floater-bar { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; background: #111; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .dots { display: flex; gap: 5px; }
+    .dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+    .dots i:nth-child(1) { background: #ff2d55; }
+    .dots i:nth-child(2) { background: #ffd60a; }
+    .dots i:nth-child(3) { background: #32d74b; }
+    .floater-bar button { margin-left: auto; width: 18px; height: 18px; border: 0; background: transparent; color: #fff; font: 800 13px/1 inherit; cursor: pointer; }
+    .floater img, .floater iframe, .floater video { display: block; width: 100%; height: 168px; border: 0; object-fit: cover; background: #000; pointer-events: none; }
+    .floater.pic img, .floater.pic video { height: 210px; }
+    .floater-body { padding: 14px 14px 16px; font-size: 15px; font-weight: 800; line-height: 1.25; text-shadow: 2px 0 #ff00aa, -2px 0 #00ffff; }
+    .floater-body small { display: block; margin-top: 6px; color: #d4d4d8; font-weight: 600; font-size: 12px; text-shadow: none; }
+    .progress { height: 8px; margin-top: 12px; overflow: hidden; border-radius: 99px; background: #27272a; }
+    .progress b { display: block; height: 100%; width: 12%; background: linear-gradient(90deg, #ff00aa, #00ffff, #ffff00); animation: load .7s ease-in-out infinite alternate; }
+    .stamp { display: inline-block; margin-top: 10px; padding: 4px 8px; border: 2px solid #ffff00; color: #ffff00; font-size: 11px; letter-spacing: .14em; transform: rotate(-8deg); }
+    .toast-stack { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column-reverse; gap: 8px; width: min(320px, calc(100% - 32px)); }
+    .toast { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 4px; background: #050505; border: 1px solid #22c55e; color: #86efac; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 700; }
+    .toast em { color: #22c55e; font-style: normal; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fall { to { transform: translateY(115vh) rotate(420deg); } }
+    @keyframes hue { to { filter: hue-rotate(360deg) saturate(1.8); } }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes load { from { width: 8%; } to { width: 97%; } }
+    @keyframes shake {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-10px, 6px); }
+      50% { transform: translate(12px, -8px); }
+      75% { transform: translate(-7px, -4px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes neon {
+      0% { border-color: #ff00aa; box-shadow: 0 0 22px #ff00aa, 0 22px 50px rgba(0,0,0,.55); }
+      33% { border-color: #00ffff; box-shadow: 0 0 22px #00ffff, 0 22px 50px rgba(0,0,0,.55); }
+      66% { border-color: #ffff00; box-shadow: 0 0 22px #ffff00, 0 22px 50px rgba(0,0,0,.55); }
+      100% { border-color: #ff00aa; box-shadow: 0 0 22px #ff00aa, 0 22px 50px rgba(0,0,0,.55); }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#f4f5f7] font-sans text-slate-900 antialiased">
+  <noscript>
+    <p class="p-6 text-sm">JavaScript wird benötigt.</p>
+  </noscript>
+
+  <div id="gate" class="min-h-screen">
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto flex h-14 max-w-3xl items-center justify-between px-5">
+        <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-900">SmartTicketing</p>
+        <p class="text-xs font-medium text-slate-500">Bot-Schutz</p>
+      </div>
+    </header>
+
+    <main class="mx-auto flex max-w-3xl flex-col gap-5 px-5 py-10 sm:py-16">
+      <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+        <div class="border-b border-slate-100 bg-slate-50 px-6 py-4">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">Schritt 1 von 2 · Verifizierung</p>
+          <h1 class="mt-1 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Sicherheitsprüfung vor dem Ticketkauf</h1>
+        </div>
+
+        <div class="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+          <div class="space-y-5 px-6 py-6">
+            <p class="text-sm leading-6 text-slate-600">
+              Für stark nachgefragte Events blocken wir automatisierte Ticket-Bots.
+              Bitte bestätige, dass du ein Mensch bist. Dein Warenkorb bleibt währenddessen reserviert.
+            </p>
+
+            <dl class="grid grid-cols-2 gap-3 text-sm">
+              <div class="rounded-xl bg-slate-50 px-3 py-3">
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Warteschlange</dt>
+                <dd id="queue" class="mt-1 font-semibold tabular-nums text-slate-900">1.284</dd>
+              </div>
+              <div class="rounded-xl bg-slate-50 px-3 py-3">
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reserviert noch</dt>
+                <dd id="reserve" class="mt-1 font-semibold tabular-nums text-slate-900">10:41</dd>
+              </div>
+              <div class="rounded-xl bg-slate-50 px-3 py-3">
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sitzung</dt>
+                <dd class="mt-1 font-medium text-slate-900">ST-7K2M91</dd>
+              </div>
+              <div class="rounded-xl bg-slate-50 px-3 py-3">
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Region</dt>
+                <dd class="mt-1 font-medium text-slate-900">EU-Central</dd>
+              </div>
+            </dl>
+
+            <button type="button" class="captcha flex w-full items-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-blue-500 hover:shadow" id="captcha" aria-pressed="false">
+              <span class="box relative grid h-6 w-6 shrink-0 place-items-center rounded-[5px] border-[1.5px] border-slate-400 bg-white text-white">
+                <svg class="check absolute h-3.5 w-3.5 opacity-0 transition" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M3.5 8.2l3 3.1 6-6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="spinner absolute h-3.5 w-3.5 rounded-full border-2 border-slate-200 border-t-slate-800 opacity-0"></span>
+              </span>
+              <span class="min-w-0">
+                <span class="label block text-sm font-semibold text-slate-900" id="captcha-label">Ich bin kein Roboter</span>
+                <span class="block text-[11px] font-medium text-slate-500">SmartTicketing Protect</span>
+              </span>
+            </button>
+
+            <p class="text-xs leading-5 text-slate-500">
+              Nach der Prüfung geht es weiter zur Zahlung. Schließe dieses Fenster nicht.
+            </p>
+          </div>
+
+          <aside class="border-t border-slate-100 bg-slate-50 px-6 py-6 lg:border-l lg:border-t-0">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Warum diese Prüfung?</p>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+              <li>Ticket-Bots kaufen Kontingente in Millisekunden auf.</li>
+              <li>Die Prüfung unterscheidet normale Käufer von Skripten.</li>
+              <li>Dein Platz in der Schlange bleibt erhalten, solange der Timer läuft.</li>
+            </ul>
+            <div class="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs leading-5 text-slate-500">
+              Status: Verbindung sicher · TLS 1.3<br>
+              Kein Captcha-Anbieter-Login erforderlich.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="flex flex-wrap items-center justify-between gap-3 pb-6 text-xs text-slate-500">
+        <span>© 2026 SmartTicketing</span>
+        <span>Datenschutz · AGB · Impressum · Hilfe</span>
+      </footer>
+    </main>
+  </div>
+
+  <div id="chaos"></div>
+  <div id="scan" aria-hidden="true"></div>
+  <div id="fx" aria-hidden="true"></div>
+  <div id="windows" aria-hidden="true"></div>
+  <div id="toasts" aria-hidden="true"></div>
+  <div id="rain" aria-hidden="true"></div>
+  <div id="done" class="bg-neutral-950 text-white">
+    <p class="text-6xl font-bold tracking-tight">ok.</p>
+    <span class="mt-2 text-[11px] font-bold uppercase tracking-[0.28em] text-neutral-500">closed</span>
+  </div>
+
+  <script src="chaos.js"></script>
+</body>
+</html>

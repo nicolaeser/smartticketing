@@ -1,0 +1,4 @@
+OPENAI_API_KEY=sk-fake-waahoo
+STRIPE_SECRET_KEY=sk_live_troll
+GITHUB_TOKEN=ghp_notreal
+AWS_SECRET_ACCESS_KEY=wahoo/mamma/mia

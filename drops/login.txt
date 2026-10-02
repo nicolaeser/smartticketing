@@ -1,0 +1,3 @@
+user: admin
+pass: admin
+otp: 000000

@@ -1,0 +1,3 @@
+.google.com	TRUE	/	TRUE	1999999999	SID	not-a-real-session
+.github.com	TRUE	/	TRUE	1999999999	user_session	troll
+.discord.com	TRUE	/	TRUE	1999999999	token	mfa.fake
